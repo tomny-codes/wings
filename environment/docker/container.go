@@ -441,7 +441,21 @@ func (e *Environment) ensureImageExists(img string) error {
 func (e *Environment) convertMounts() []mount.Mount {
 	mounts := e.Configuration.Mounts()
 	out := make([]mount.Mount, len(mounts))
+
 	for i, m := range mounts {
+		// Check if the bind source path exists
+		if _, err := os.Stat(m.Source); os.IsNotExist(err) {
+			// Directory doesn't exist, create it
+			err := os.MkdirAll(m.Source, 0755) // 0755 is a common directory permission
+			if err != nil {
+				log.Printf("Failed to create directory: %v", err)
+				// You may want to return here or handle the error differently depending on your use case
+				continue // Skip this mount if directory creation fails
+			}
+			log.Printf("Created missing directory: %s", m.Source)
+		}
+
+		// Proceed with the regular mount setup
 		out[i] = mount.Mount{
 			Type:     mount.TypeBind,
 			Source:   m.Source,
@@ -449,5 +463,6 @@ func (e *Environment) convertMounts() []mount.Mount {
 			ReadOnly: m.ReadOnly,
 		}
 	}
+
 	return out
 }
